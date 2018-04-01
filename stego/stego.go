@@ -2,6 +2,9 @@ package stego
 
 import "fmt"
 
-func Util() {
-    fmt.Println("This is a test util")
+func Hide(msg string, image string) int {
+
+    fmt.Println("Hide() has yet to be implemented")
+    return -1
+
 }
