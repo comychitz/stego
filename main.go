@@ -7,29 +7,36 @@ import (
 )
 
 func usage() {
-    fmt.Println("Usage: stego path/to/image \"your secret message\"")
+    fmt.Println("usage: stego [options] path/to/image")
+    fmt.Println("")
+    fmt.Println("options:")
+    fmt.Println(" -m msg     hide the message \"msg\" into the image")
+    fmt.Println(" -r         read the message inside the image")
+    fmt.Println(" -h         prints this help message")
+    fmt.Println("")
     os.Exit(1)
 }
 
 func main() {
     var msg, image string
 
-    if(len(os.Args) != 3) {
-        usage()
-    }
-    image = os.Args[1]
-    msg = os.Args[2]
+    //
+    // read command line arguments
+    //
+    // TODO
 
-    fmt.Printf("Hiding msg: '%s' into '%s'...\n", msg, image)
 
-    var ret int = -1
-    ret = stego.Hide(msg, image)
 
-    if(ret != 0) {
-        fmt.Println("Problems hiding message!")
-        os.Exit(1)
-    } else {
-        fmt.Println("Done!")
-        os.Exit(0)
-    }
+    //
+    // add message into decoded image
+    //
+    // TODO
+
+    //
+    // encode & save new image
+    //
+    // TODO
+
+
+    os.Exit(0)
 }
