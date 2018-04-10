@@ -3,7 +3,19 @@ A steganography tool written in Go for hiding a message within an image.
 
 ## usage
 ```
-$ stego myImage.jpeg "This my super secret message"
+Usage of stego:
+    stego [options]
+  options:
+    -i image    target image
+    -m msg      hide the message \"msg\" into the target image
+    -r outfile  read the image, outputting the message into outfile
+    -h          print this message
+```
+```
+$ stego -i targetImage.jpg -m "this is my super secret message"
+```
+```
+$ stego -i targetImage_stego.jpg -r output.txt
 ```
 
 ## approach

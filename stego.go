@@ -8,7 +8,7 @@ import (
 )
 var usage = func() string {
     return `  options:
-    -i msg      target image
+    -i image    target image
     -m msg      hide the message \"msg\" into the target image
     -r outfile  read the image, outputting the message into outfile
     -h          print this message`
@@ -18,9 +18,9 @@ func main() {
     //
     // read command line arguments
     //
-    var msg = goopt.String([]string{"-m", "--message"}, "", "specify msg to hide")
-    var image = goopt.String([]string{"-i", "--image"}, "", "target image")
-    var outfile = goopt.String([]string{"-r", "--read"}, "", "read the image, outputting msg into outfile")
+    var msg = goopt.String([]string{"-m"}, "", "specify msg to hide")
+    var image = goopt.String([]string{"-i"}, "", "target image")
+    var outfile = goopt.String([]string{"-r"}, "", "read the image, outputting msg into outfile")
     goopt.Summary = "stego [options]"
     goopt.Help = usage
     goopt.Parse(nil)
