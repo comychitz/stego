@@ -32,12 +32,18 @@ func main() {
           os.Exit(1)
     }
 
+    var outmsg string
     var ret int = 0
     if(len(*outfile) > 0) {
         //
         // read msg from image and put into outfile
         //
-        ret = stego.Read(*image, *outfile)
+        ret = stego.Read(*image, outmsg)
+        if ret == 0 {
+
+            // TODO - save msg into outfile
+
+        }
     } else {
         //
         // write secret msg into image

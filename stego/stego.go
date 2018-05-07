@@ -9,9 +9,9 @@ import (
 )
 
 const (
-    ETX     int = 0
     PARTIAL int = 1
     CHAR    int = 2
+    ETX     int = 3
 )
 
 /**
@@ -44,33 +44,12 @@ func calcMaxMsgSize(i image.Image) int  {
     return (i.Bounds().Max.X-i.Bounds().Min.X)*(i.Bounds().Max.Y-i.Bounds().Min.Y)*3/8
 }
 
-func Hide(msg string, imagePath string) int {
-
-    m, err := openImage(imagePath)
-    if err != nil {
-        fmt.Printf("Error opening image: %s\n", imagePath, err)
-        return 1
-    }
-
-    fmt.Printf("Max length of hidden message for this image: %d bytes\n",
-               calcMaxMsgSize(m))
-
-    // TODO add check to make sure image can fit message, return 1 if cannot
- 
-    // TODO
-    //
-    // 2) iterate over message, decode each byte into bits
-    //    and add into bitmap accordingly. put "etx" ascii value 
-    //    at end of msg to indicate completion
-    // 3) save new image
-    //
-
-
-    return 0
-}
-
 var char byte = 0
 var count uint = 0
+/**
+ * decode the image pixels into a character
+ * if a full byte hasn't been parsed yet, return PARTIAL
+ */
 func decode(r, g, b, a uint32, c* byte)  int {
 
     colors := []uint32 {r,g,b}
@@ -97,13 +76,13 @@ func decode(r, g, b, a uint32, c* byte)  int {
     leftover = false
     count = 0
 
-    if *c == 3 {
+    if *c == ETX {
         return ETX
     }
     return CHAR
 }
 
-func Read(imagePath string, outfile string) int {
+func Read(imagePath string, str *string) int {
 
     m, err := openImage(imagePath)
     if err != nil {
@@ -131,9 +110,45 @@ func Read(imagePath string, outfile string) int {
 
     fmt.Printf("Read hidden msg (%d chars) from image: \n%s\n", len(msg), msg)
 
+    return 0
+}
+
+/**
+ * encode a character of the msg to hide into the image
+ */
+func encode(char string, image.Image m) int {
+
     //
-    // TODO save msg into outfile
+    // TODO
     //
+
+}
+
+func Hide(msg string, imagePath string) int {
+
+    m, err := openImage(imagePath)
+    if err != nil {
+        fmt.Printf("Error opening image: %s\n", imagePath, err)
+        return 1
+    }
+
+    maxSize := calcMaxMsgSize(m)
+    fmt.Printf("Max length of hidden message for this image: %d bytes\n", maxSize)
+
+    if len(msg) >= maxSize {
+        fmt.Printf("Message (%d bytes) can't fit in this image\n", len(msg))
+        return 1
+    }
+
+    // iterate over message, decode each byte into bits
+    //    and add into bitmap accordingly. put "etx" ascii value 
+    //    at end of msg to indicate completion
+    for _, s := range(msg) {
+        encode(s, m)
+    }
+    encode(string(ETX), m)
+
+    // lastly, save new image
 
     return 0
 }

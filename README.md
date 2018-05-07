@@ -17,6 +17,7 @@ $ stego -i targetImage.jpg -m "this is my super secret message"
 ```
 $ stego -i targetImage_stego.jpg -r output.txt
 ```
+*Note: supports UTF8 messages and jpeg & png images*
 
 ## approach
 Each image is simply a bitmap of pixels, each pixel having an RGB (red, green,
@@ -31,6 +32,7 @@ the whole purpose of *hiding*. To keep things simple, we will steal the
 least significant bit from each color within each pixel. Thus, the max length 
 of our secret message will depend on the size of our image. For example, if we 
 had a 500x400 image, the maximum length of our message will be 75,000
-characters/bytes (500 * 400 * 3 / 8 = 75,000). The tool will only support
-ascii messages.
+characters/bytes (500 * 400 * 3 / 8 = 75,000).
+
+
 
