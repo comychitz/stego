@@ -8,6 +8,12 @@ import (
     "os"
 )
 
+const (
+    ETX     int = 0
+    PARTIAL int = 1
+    CHAR    int = 2
+)
+
 /**
  * open the image specified by the user
  */
@@ -47,8 +53,10 @@ func Hide(msg string, imagePath string) int {
     }
 
     fmt.Printf("Max length of hidden message for this image: %d bytes\n",
-               calcMaxMsgSize(m));
+               calcMaxMsgSize(m))
 
+    // TODO add check to make sure image can fit message, return 1 if cannot
+ 
     // TODO
     //
     // 2) iterate over message, decode each byte into bits
@@ -61,19 +69,71 @@ func Hide(msg string, imagePath string) int {
     return 0
 }
 
-func Read(image string, outfile string) int {
+var char byte = 0
+var count uint = 0
+func decode(r, g, b, a uint32, c* byte)  int {
 
-    fmt.Println("Read() has yet to be implemented")
-    return 1
+    colors := []uint32 {r,g,b}
+    var leftover bool = false
+    for _, c := range colors {
 
-    // TODO
+        if c & 1 > 0 {
+            if count <= 8 {
+                char += 1<<count
+            } else {
+                leftover = true
+            }
+        }
+        count++
+    }
+    if count < 9 {
+        return PARTIAL
+    }
+    *c = char
+    char = 0
+    if(leftover) {
+        char = 1
+    }
+    leftover = false
+    count = 0
+
+    if *c == 3 {
+        return ETX
+    }
+    return CHAR
+}
+
+func Read(imagePath string, outfile string) int {
+
+    m, err := openImage(imagePath)
+    if err != nil {
+        fmt.Printf("Error opening image: %s\n", imagePath, err)
+        return 1
+    }
+
+    // iterate over bitmap, decoding the message until "etx" value is seen
+    var msg string
+    Outer:
+        for y := m.Bounds().Min.Y; y < m.Bounds().Max.Y; y++ {
+            for x := m.Bounds().Min.X; x < m.Bounds().Max.X; x++ {
+
+                var c byte = 0
+                r, g, b, a := m.At(x,y).RGBA()
+                ret := decode(r, g, b, a, &c)
+
+                if ret == ETX {
+                    break Outer
+                } else if ret == CHAR {
+                    msg += string(c)
+                }
+            }
+        }
+
+    fmt.Printf("Read hidden msg (%d chars) from image: \n%s\n", len(msg), msg)
+
     //
-    // 1) open image, get bitmap of pixels
-    // 2) iterate over bitmap, decoding the message until "etx"
-    //    value is seen.
-    // 3) save msg into outfile
+    // TODO save msg into outfile
     //
-
 
     return 0
 }
