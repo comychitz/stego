@@ -5,6 +5,7 @@ import (
     "image"
     _ "image/png"
     _ "image/jpeg"
+    "image/color"
     "os"
 )
 
@@ -76,7 +77,7 @@ func decode(r, g, b, a uint32, c* byte)  int {
     leftover = false
     count = 0
 
-    if *c == ETX {
+    if int(*c) == ETX {
         return ETX
     }
     return CHAR
@@ -113,15 +114,59 @@ func Read(imagePath string, str *string) int {
     return 0
 }
 
+type Changeable interface {
+        Set(x, y int, c color.Color)
+}
+
 /**
  * encode a character of the msg to hide into the image
  */
-func encode(char string, image.Image m) int {
+var x int = -1
+var y int = -1
+var count2 int = 0
+func encode(char byte, m image.Image) int {
 
-    //
-    // TODO
-    //
+    if x < 0 {
+        x = m.Bounds().Min.X
+        y = m.Bounds().Min.Y
+    }
+    for i := uint32(0); i < 8; i++ {
 
+        r, g, b, a := m.At(x,y).RGBA()
+        colors := []uint32 {r,g,b}
+
+        if uint32(char) & 1<<i > 0 {
+            colors[count2] = colors[count2]|1
+        } else {
+            colors[count2] = colors[count2]&0xFFFE
+        }
+
+        var rgba color.RGBA
+        rgba.R = uint8(colors[0]/a)
+        rgba.G = uint8(colors[1]/a)
+        rgba.B = uint8(colors[2]/a)
+        rgba.A = uint8(a)
+
+        if img, ok := m.(Changeable); ok {
+            img.Set(x, y, rgba)
+        } else {
+            fmt.Println("Unable to modify image")
+            return 1
+        }
+
+        count2++
+        if count2 > 3 {
+            // move to the next pixel
+            if x+1 > m.Bounds().Max.X {
+                y += 1
+                x=0
+            } else {
+                x += 1
+            }
+            count2 = 0
+        }
+    }
+    return 0
 }
 
 func Hide(msg string, imagePath string) int {
@@ -140,15 +185,14 @@ func Hide(msg string, imagePath string) int {
         return 1
     }
 
-    // iterate over message, decode each byte into bits
-    //    and add into bitmap accordingly. put "etx" ascii value 
-    //    at end of msg to indicate completion
+    // iterate over message, decode each byte into bits and add into image. 
+    // put "etx" ascii value  at end of msg to indicate completion
     for _, s := range(msg) {
-        encode(s, m)
+        if encode(byte(s), &m) != 0 {
+            return 1
+        }
     }
-    encode(string(ETX), m)
-
-    // lastly, save new image
+    encode(byte(ETX), &m)
 
     return 0
 }

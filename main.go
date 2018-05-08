@@ -38,7 +38,7 @@ func main() {
         //
         // read msg from image and put into outfile
         //
-        ret = stego.Read(*image, outmsg)
+        ret = stego.Read(*image, &outmsg)
         if ret == 0 {
 
             // TODO - save msg into outfile
