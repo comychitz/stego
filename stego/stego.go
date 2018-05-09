@@ -45,43 +45,44 @@ func calcMaxMsgSize(i image.Image) int  {
     return (i.Bounds().Max.X-i.Bounds().Min.X)*(i.Bounds().Max.Y-i.Bounds().Min.Y)*3/8
 }
 
-var char byte = 0
-var count uint = 0
 /**
- * decode the image pixels into a character
+ * return a decoder for decoding the image pixel into a character
  * if a full byte hasn't been parsed yet, return PARTIAL
  */
-func decode(r, g, b, a uint32, c* byte)  int {
+ func decoder() func(r, g, b, a uint32, c*byte) int {
+     var char byte = 0
+     var count uint = 0
+     return func(r, g, b, a uint32, c* byte)  int {
+         colors := []uint32 {r,g,b}
+         var leftover bool = false
+         for _, c := range colors {
 
-    colors := []uint32 {r,g,b}
-    var leftover bool = false
-    for _, c := range colors {
+             if c & 1 > 0 {
+                 if count <= 8 {
+                     char += 1<<count
+                 } else {
+                     leftover = true
+                 }
+             }
+             count++
+         }
+         if count < 9 {
+             return PARTIAL
+         }
+         *c = char
+         char = 0
+         if(leftover) {
+             char = 1
+         }
+         leftover = false
+         count = 0
 
-        if c & 1 > 0 {
-            if count <= 8 {
-                char += 1<<count
-            } else {
-                leftover = true
-            }
-        }
-        count++
-    }
-    if count < 9 {
-        return PARTIAL
-    }
-    *c = char
-    char = 0
-    if(leftover) {
-        char = 1
-    }
-    leftover = false
-    count = 0
-
-    if int(*c) == ETX {
-        return ETX
-    }
-    return CHAR
-}
+         if int(*c) == ETX {
+             return ETX
+         }
+         return CHAR
+     }
+ }
 
 func Read(imagePath string, str *string) int {
 
@@ -93,6 +94,7 @@ func Read(imagePath string, str *string) int {
 
     // iterate over bitmap, decoding the message until "etx" value is seen
     var msg string
+    decode := decoder()
     Outer:
         for y := m.Bounds().Min.Y; y < m.Bounds().Max.Y; y++ {
             for x := m.Bounds().Min.X; x < m.Bounds().Max.X; x++ {
@@ -126,6 +128,7 @@ var y int = -1
 var count2 int = 0
 func encode(char byte, m image.Image) int {
 
+    /*
     if x < 0 {
         x = m.Bounds().Min.X
         y = m.Bounds().Min.Y
@@ -166,6 +169,7 @@ func encode(char byte, m image.Image) int {
             count2 = 0
         }
     }
+    */
     return 0
 }
 
@@ -188,11 +192,11 @@ func Hide(msg string, imagePath string) int {
     // iterate over message, decode each byte into bits and add into image. 
     // put "etx" ascii value  at end of msg to indicate completion
     for _, s := range(msg) {
-        if encode(byte(s), &m) != 0 {
+        if encode(byte(s), m) != 0 {
             return 1
         }
     }
-    encode(byte(ETX), &m)
+    encode(byte(ETX), m)
 
     return 0
 }
