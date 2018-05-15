@@ -84,18 +84,14 @@ func calcMaxMsgSize(i image.Image) int  {
      }
  }
 
-type Changeable interface {
-        Set(x, y int, c color.Color)
-}
-
 /**
  * return function for encoding a character of the msg to hide into the image
  */
-func encoder(m image.Image) func(byte, image.Image) int {
+func encoder(m image.Image) func(byte, image.RGBA) int {
     count := 0
     x := m.Bounds().Min.X
     y := m.Bounds().Min.Y
-    return func(char byte, m image.Image) int {
+    return func(char byte, m image.RGBA) int {
         for i := uint32(0); i < 8; i++ {
             r, g, b, a := m.At(x,y).RGBA()
             colors := []uint32 {r,g,b}
@@ -111,12 +107,8 @@ func encoder(m image.Image) func(byte, image.Image) int {
             rgba.B = uint8(colors[2]/a)
             rgba.A = uint8(a)
 
-            if img, ok := m.(Changeable); ok {
-                img.Set(x, y, rgba)
-            } else {
-                fmt.Println("Unable to modify image")
-                return 1
-            }
+            m.Set(x, y, rgba)
+
             count++
             if count > 3 {
                 // move to the next pixel
@@ -144,13 +136,23 @@ func Hide(msg string, imagePath string) int {
         fmt.Printf("Message (%d bytes) can't fit in this image\n", len(msg))
         return 1
     }
+
+    outImg := image.NewRGBA(m.Bounds())
+    draw.Draw(outImg, m.Bounds(), m, image.Point{}, draw.Over)
+
     encode := encoder(m)
     for _, s := range(msg) {
-        if encode(byte(s), m) != 0 {
+        if encode(byte(s), outImg) != 0 {
             return 1
         }
     }
     encode(byte(ETX), m)
+
+    //
+    // TODO save new image
+    // jpeg.Encode(outFile, outImg, nil)
+    //
+
     return 0
 }
 
