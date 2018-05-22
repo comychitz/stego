@@ -3,8 +3,8 @@ package stego
 import (
     "fmt"
     "image"
-    _ "image/png"
-    _ "image/jpeg"
+    "image/draw"
+    "image/jpeg"
     "image/color"
     "os"
 )
@@ -53,7 +53,7 @@ func calcMaxMsgSize(i image.Image) int  {
      var char byte = 0
      var count uint = 0
      return func(r, g, b, a uint32, c* byte)  int {
-         colors := []uint32 {r,g,b}
+         colors := []uint8 {uint8(r),uint8(g),uint8(b)}
          var leftover bool = false
          for _, c := range colors {
 
@@ -78,8 +78,10 @@ func calcMaxMsgSize(i image.Image) int  {
          count = 0
 
          if int(*c) == ETX {
+             fmt.Println("byte: ", *c)
              return ETX
          }
+         fmt.Println("byte: ", *c)
          return CHAR
      }
  }
@@ -87,30 +89,35 @@ func calcMaxMsgSize(i image.Image) int  {
 /**
  * return function for encoding a character of the msg to hide into the image
  */
-func encoder(m image.Image) func(byte, image.RGBA) int {
+func encoder(m image.Image) func(byte, *image.RGBA) int {
     count := 0
     x := m.Bounds().Min.X
     y := m.Bounds().Min.Y
-    return func(char byte, m image.RGBA) int {
+    return func(char byte, m *image.RGBA) int {
+        fmt.Printf("Hiding char: (%d)\n", char)
         for i := uint32(0); i < 8; i++ {
             r, g, b, a := m.At(x,y).RGBA()
-            colors := []uint32 {r,g,b}
+            colors := []uint8 {uint8(r), uint8(g), uint8(b)}
+            fmt.Printf("Read pixel [%d,%d] to: R:%d G:%d B:%d\n",
+                           x, y, colors[0], colors[1], colors[2])
 
-            if uint32(char) & 1<<i > 0 {
+            if uint32(char) & (1<<(7-i)) > 0 {
                 colors[count] = colors[count]|1
             } else {
-                colors[count] = colors[count]&0xFFFE
+                colors[count] = colors[count]&0xFE
             }
+
             var rgba color.RGBA
-            rgba.R = uint8(colors[0]/a)
-            rgba.G = uint8(colors[1]/a)
-            rgba.B = uint8(colors[2]/a)
+            rgba.R = colors[0]
+            rgba.G = colors[1]
+            rgba.B = colors[2]
             rgba.A = uint8(a)
 
-            m.Set(x, y, rgba)
-
             count++
-            if count > 3 {
+            if count >= 3 {
+                m.SetRGBA(x, y, rgba)
+                fmt.Printf("Set pixel [%d,%d] to: R:%d G:%d B:%d\n\n",
+                           x, y, rgba.R, rgba.G, rgba.B)
                 // move to the next pixel
                 if x+1 > m.Bounds().Max.X {
                     y += 1
@@ -129,13 +136,15 @@ func Hide(msg string, imagePath string) int {
 
     m, err := openImage(imagePath)
     if err != nil {
-        fmt.Printf("Error opening image: %s\n", imagePath, err)
+        fmt.Printf("Error opening image: %s (%d)\n", imagePath, err)
         return 1
     }
     if len(msg) >= calcMaxMsgSize(m) {
         fmt.Printf("Message (%d bytes) can't fit in this image\n", len(msg))
         return 1
     }
+    fmt.Printf("Hidding message of length %d (%d bits): %s\n", len(msg),
+               len(msg)*8, msg)
 
     outImg := image.NewRGBA(m.Bounds())
     draw.Draw(outImg, m.Bounds(), m, image.Point{}, draw.Over)
@@ -146,13 +155,20 @@ func Hide(msg string, imagePath string) int {
             return 1
         }
     }
-    encode(byte(ETX), m)
+    encode(byte(ETX), outImg)
 
-    //
-    // TODO save new image
-    // jpeg.Encode(outFile, outImg, nil)
-    //
-
+    var savePath string = imagePath + "-2"
+    w, err := os.Create(savePath)
+    if err != nil {
+        fmt.Printf("Error opening for saving (%s)\n", err)
+        return 1
+    }
+    defer w.Close()
+    err =  jpeg.Encode(w, outImg, nil)
+    if err != nil {
+        fmt.Printf("Error saving image (%s)\n", err)
+        return 1
+    }
     return 0
 }
 
@@ -162,14 +178,20 @@ func Read(imagePath string, str *string) int {
         fmt.Printf("Error opening image: %s\n", imagePath, err)
         return 1
     }
+    outImg := image.NewRGBA(m.Bounds())
+    draw.Draw(outImg, m.Bounds(), m, image.Point{}, draw.Over)
+
     decode := decoder()
     Outer:
         for y := m.Bounds().Min.Y; y < m.Bounds().Max.Y; y++ {
             for x := m.Bounds().Min.X; x < m.Bounds().Max.X; x++ {
 
                 var c byte = 0
-                r, g, b, a := m.At(x,y).RGBA()
-                ret := decode(r, g, b, a, &c)
+                r2, g2, b2, a2 := outImg.At(x,y).RGBA()
+                fmt.Printf("Pixel [%d,%d] is: R:%d G:%d B:%d \n",
+                       x, y, uint8(r2), uint8(g2), uint8(b2))
+
+                ret := decode(r2, g2, b2, a2, &c)
 
                 if ret == ETX {
                     break Outer
